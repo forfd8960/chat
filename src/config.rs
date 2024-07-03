@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 
 use std::{env, fs::File};
 
+#[allow(dead_code)]
 #[derive(Serialize, Deserialize, Debug)]
 pub struct AppConfig {
     pub server: ServerConfig,
@@ -9,7 +10,7 @@ pub struct AppConfig {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ServerConfig {
-    pub host: u16,
+    pub port: u16,
 }
 
 #[allow(dead_code)]
