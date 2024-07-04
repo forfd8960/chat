@@ -8,6 +8,11 @@ use axum::{
     Router,
 };
 pub use config::AppConfig;
+use handlers::{
+    create_chat_handler, delete_chat_handler, index_handler, list_chat_handler,
+    list_messages_handler, send_message_handler, signin_handler, signup_handler,
+    update_chat_handler,
+};
 
 #[derive(Debug, Clone)]
 pub(crate) struct AppState {
@@ -55,14 +60,3 @@ pub fn get_router(conf: AppConfig) -> axum::Router {
         .nest("/api", api_router)
         .with_state(state)
 }
-
-async fn index_handler() {}
-
-async fn signin_handler() {}
-async fn signup_handler() {}
-async fn create_chat_handler() {}
-async fn list_chat_handler() {}
-async fn update_chat_handler() {}
-async fn delete_chat_handler() {}
-async fn send_message_handler() {}
-async fn list_messages_handler() {}

@@ -14,3 +14,8 @@ pub(crate) async fn create_chat_handler() -> impl IntoResponse {
 pub(crate) async fn update_chat_handler() -> impl IntoResponse {
     "update chat handler"
 }
+
+#[allow(dead_code)]
+pub(crate) async fn delete_chat_handler() -> impl IntoResponse {
+    "delete chat handler"
+}
