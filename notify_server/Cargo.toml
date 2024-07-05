@@ -6,8 +6,11 @@ edition = "2021"
 [dependencies]
 anyhow = { workspace = true }
 axum = { workspace = true }
+axum-extra = { version = "0.9.3", features = ["typed-header"] }
+futures = "0.3.30"
 thiserror = { workspace = true }
 tokio = { workspace = true }
+tokio-stream = "0.1.15"
 sqlx = { workspace = true }
 serde = { workspace = true }
 serde_yml = { workspace = true }
