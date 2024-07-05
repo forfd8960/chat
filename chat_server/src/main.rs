@@ -4,7 +4,7 @@ use tokio::net::TcpListener;
 use tracing::{info, level_filters::LevelFilter};
 use tracing_subscriber::{fmt::Layer, layer::SubscriberExt, util::SubscriberInitExt, Layer as _};
 
-use chat::{get_router, AppConfig};
+use chat_server::{get_router, AppConfig};
 
 #[tokio::main]
 async fn main() -> Result<()> {
