@@ -16,7 +16,7 @@ use handlers::{
 
 #[derive(Debug, Clone)]
 pub(crate) struct AppState {
-    inner: Arc<AppStateInner>,
+    inner: Arc<AppStateInner>, // make AppState clone to be Lightweight
 }
 
 #[allow(dead_code)]
@@ -25,6 +25,7 @@ pub(crate) struct AppStateInner {
     pub(crate) config: AppConfig,
 }
 
+// state.config => state.inner.config
 impl Deref for AppState {
     type Target = AppStateInner;
     fn deref(&self) -> &Self::Target {
