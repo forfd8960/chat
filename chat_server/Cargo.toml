@@ -15,3 +15,6 @@ serde = { workspace = true }
 serde_yml = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
+chrono = { version = "0.4.38", features = ["serde"] }
+argon2 = { version = "0.5.3", features = ["std"] }
+sqlx-db-tester = "0.4.2"
