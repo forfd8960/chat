@@ -1,5 +1,6 @@
 use thiserror::Error;
 
+#[allow(clippy::enum_variant_names)]
 #[derive(Debug, Error)]
 pub enum AppError {
     #[error("sql error: {0}")]
@@ -7,4 +8,7 @@ pub enum AppError {
 
     #[error("password hash error: {0}")]
     PasswordHashError(#[from] argon2::password_hash::Error),
+
+    #[error("jwt error: {0}")]
+    JwtError(#[from] jwt_simple::Error),
 }

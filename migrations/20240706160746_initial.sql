@@ -4,7 +4,7 @@ CREATE TABLE IF NOT EXISTS users (
     ws_id bigint NOT NULL,
     fullname VARCHAR(64) NOT NULL,
     email VARCHAR(64) NOT NULL,
-    password VARCHAR(64) NOT NULL,
+    password VARCHAR(97) NOT NULL,
     created_at timestamptz DEFAULT CURRENT_TIMESTAMP
 );
 
