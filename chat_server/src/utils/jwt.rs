@@ -59,3 +59,28 @@ impl Deref for DecodingKey {
         &self.0
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_jwt() -> Result<()> {
+        let encoding_key = EncodingKey::load(include_str!("../../fixture/private.pem"))?;
+        let decoding_key = DecodingKey::load(include_str!("../../fixture/public.pem"))?;
+
+        let user1 = User {
+            id: 1,
+            ws_id: 1,
+            fullname: "<NAME>".to_string(),
+            email: "<EMAIL>".to_string(),
+            password_hash: None,
+            created_at: chrono::Utc::now(),
+        };
+        let u = user1.clone();
+        let token = EncodingKey::sign(user1, &encoding_key)?;
+        let user2 = DecodingKey::verify(&token, &decoding_key)?;
+        assert_eq!(u, user2);
+        Ok(())
+    }
+}

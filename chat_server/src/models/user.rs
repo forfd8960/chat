@@ -52,7 +52,7 @@ impl User {
         .await?;
 
         if let Some(mut u) = user {
-            let password_hash = mem::take(&mut u.password_hash);
+            let password_hash = mem::take(&mut u.password_hash).unwrap();
             let is_valid = verify_password(password, &password_hash)?;
             if is_valid {
                 Ok(Some(u))
