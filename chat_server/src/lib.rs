@@ -4,20 +4,25 @@ mod handlers;
 mod models;
 mod utils;
 
-use std::{ops::Deref, sync::Arc};
+pub use config::AppConfig;
+pub use models::User;
 
+use anyhow::{Context, Result};
 use axum::{
     routing::{get, patch, post},
     Router,
 };
-pub use config::AppConfig;
+use error::AppError;
+
 use handlers::{
     create_chat_handler, delete_chat_handler, index_handler, list_chat_handler,
     list_messages_handler, send_message_handler, signin_handler, signup_handler,
     update_chat_handler,
 };
 
-pub use models::User;
+use sqlx::PgPool;
+use std::{fmt, ops::Deref, sync::Arc};
+use utils::{DecodingKey, EncodingKey};
 
 #[derive(Debug, Clone)]
 pub(crate) struct AppState {
@@ -25,9 +30,11 @@ pub(crate) struct AppState {
 }
 
 #[allow(dead_code)]
-#[derive(Debug)]
 pub(crate) struct AppStateInner {
+    pub(crate) pool: PgPool,
     pub(crate) config: AppConfig,
+    pub(crate) dk: DecodingKey,
+    pub(crate) ek: EncodingKey,
 }
 
 // state.config => state.inner.config
@@ -39,15 +46,33 @@ impl Deref for AppState {
 }
 
 impl AppState {
-    pub fn new(config: AppConfig) -> Self {
-        Self {
-            inner: Arc::new(AppStateInner { config }),
-        }
+    pub async fn try_new(config: AppConfig) -> Result<Self, AppError> {
+        let dk = DecodingKey::load(&config.auth.private_key).context("load DecodingKey failed")?;
+        let ek = EncodingKey::load(&config.auth.public_key).context("load EncodingKey failed")?;
+        let pool = PgPool::connect(&config.server.db_url)
+            .await
+            .context("connect DB failed")?;
+        Ok(Self {
+            inner: Arc::new(AppStateInner {
+                pool,
+                config,
+                dk,
+                ek,
+            }),
+        })
     }
 }
 
-pub fn get_router(conf: AppConfig) -> axum::Router {
-    let state = AppState::new(conf);
+impl fmt::Debug for AppStateInner {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("AppStateInner")
+            .field("config", &self.config)
+            .finish()
+    }
+}
+
+pub async fn get_router(conf: AppConfig) -> Result<axum::Router, AppError> {
+    let state = AppState::try_new(conf).await?;
 
     let api_router = Router::new()
         .route("/signin", post(signin_handler))
@@ -61,8 +86,8 @@ pub fn get_router(conf: AppConfig) -> axum::Router {
         )
         .route("/chat/:id/messages", get(list_messages_handler));
 
-    Router::new()
+    Ok(Router::new()
         .route("/", get(index_handler))
         .nest("/api", api_router)
-        .with_state(state)
+        .with_state(state))
 }

@@ -18,11 +18,12 @@ impl EncodingKey {
         Ok(Self(Ed25519KeyPair::from_pem(pem)?))
     }
 
-    pub fn sign(user: User, key: &EncodingKey) -> Result<String, AppError> {
-        let claims = Claims::with_custom_claims(user, Duration::from_secs(JWT_DURATION));
+    pub fn sign(&self, user: impl Into<User>) -> Result<String, AppError> {
+        let u: User = user.into();
+        let claims = Claims::with_custom_claims(u, Duration::from_secs(JWT_DURATION));
         let claims = claims.with_issuer(JWT_ISS).with_audience(JWT_AUD);
 
-        Ok(key.sign(claims)?)
+        Ok(self.0.sign(claims)?)
     }
 }
 
@@ -32,14 +33,14 @@ impl DecodingKey {
         Ok(Self(Ed25519PublicKey::from_pem(pem)?))
     }
 
-    pub fn verify(token: &str, key: &DecodingKey) -> Result<User, AppError> {
+    pub fn verify(&self, token: &str) -> Result<User, AppError> {
         let options = jwt_simple::common::VerificationOptions {
             allowed_issuers: Some(HashSet::from([JWT_ISS.to_string()])),
             allowed_audiences: Some(HashSet::from([JWT_AUD.to_string()])),
             ..Default::default()
         };
 
-        let claims = key.verify_token::<User>(token, Some(options))?;
+        let claims = self.0.verify_token::<User>(token, Some(options))?;
         Ok(claims.custom)
     }
 }
@@ -78,8 +79,8 @@ mod tests {
             created_at: chrono::Utc::now(),
         };
         let u = user1.clone();
-        let token = EncodingKey::sign(user1, &encoding_key)?;
-        let user2 = DecodingKey::verify(&token, &decoding_key)?;
+        let token = encoding_key.sign(user1)?;
+        let user2 = decoding_key.verify(&token)?;
         assert_eq!(u, user2);
         Ok(())
     }
