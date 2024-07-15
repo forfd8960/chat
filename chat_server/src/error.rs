@@ -1,3 +1,5 @@
+use axum::http::StatusCode;
+use axum::response::IntoResponse;
 use thiserror::Error;
 
 #[allow(clippy::enum_variant_names)]
@@ -11,4 +13,16 @@ pub enum AppError {
 
     #[error("jwt error: {0}")]
     JwtError(#[from] jwt_simple::Error),
+}
+
+impl IntoResponse for AppError {
+    fn into_response(self) -> axum::response::Response {
+        let status_code = match self {
+            AppError::SqlxError(_) => StatusCode::INTERNAL_SERVER_ERROR,
+            AppError::PasswordHashError(_) => StatusCode::UNPROCESSABLE_ENTITY,
+            AppError::JwtError(_) => StatusCode::FORBIDDEN,
+        };
+
+        (status_code, format!("{:?}", self)).into_response()
+    }
 }
