@@ -1,10 +1,12 @@
 mod config;
 mod error;
 mod handlers;
+mod middlewares;
 mod models;
 mod utils;
 
 pub use config::AppConfig;
+use middlewares::set_layer;
 pub use models::User;
 
 use anyhow::{Context, Result};
@@ -86,8 +88,10 @@ pub async fn get_router(conf: AppConfig) -> Result<axum::Router, AppError> {
         )
         .route("/chat/:id/messages", get(list_messages_handler));
 
-    Ok(Router::new()
+    let app = Router::new()
         .route("/", get(index_handler))
         .nest("/api", api_router)
-        .with_state(state))
+        .with_state(state);
+
+    Ok(set_layer(app))
 }
