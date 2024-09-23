@@ -1,6 +1,6 @@
 use crate::{
     error::AppError,
-    models::{CreateUser, SignInUser},
+    models::user::{CreateUser, SignInUser},
     AppState, User,
 };
 use axum::{extract::State, http::StatusCode, response::IntoResponse, Json};

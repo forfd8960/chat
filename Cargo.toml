@@ -1,26 +1,37 @@
 [workspace]
-members = ["chat_server", "notify_server"]
+members = ["chat_server", "notify_server", "chat_core"]
 resolver = "2"
 
 [workspace.dependencies]
-anyhow = "1.0.86"
-axum = { version = "0.7.5", features = ["http2", "query", "tracing", "multipart"] }
-thiserror = "1.0.61"
-tokio = { version = "1.38.0", features = ["full"] }
-sqlx = { version = "0.7.4", features = [
-"chrono",
-"postgres",
-"runtime-tokio",
-"tls-rustls",
-] }
+anyhow = "1.0.82"
+axum = { version = "0.7.5", features = [
+  "http2",
+  "query",
+  "tracing",
+  "multipart",
+]}
+axum-extra = { version = "0.9.3", features = ["typed-header"] }
+chrono = { version = "0.4.38", features = ["serde"] }
+chat_core = { path = "./chat_core" }
+chat-server = { path = "./chat_server" }
+jwt-simple = "0.12.9"
+notify-server = { path = "./notify_server" }
 serde = { version = "1.0.198", features = ["derive"] }
-serde_yml = "0.0.10"
-tracing = "0.1.40"
-tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
-uuid = { version= "1.10.0", features = ["v7", "serde"]}
+serde_yaml = "0.9"
+sqlx = { version = "0.7.4", features = [
+  "chrono",
+  "postgres",
+  "runtime-tokio",
+  "tls-rustls",
+] }
+thiserror = "1.0.59"
+tokio = { version = "1.37.0", features = ["rt", "rt-multi-thread", "macros"] }
 tower = "0.4.13"
 tower-http = { version = "0.5.2", features = [
   "compression-full",
+  "cors",
   "fs",
   "trace",
 ] }
+tracing = "0.1.40"
+tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }

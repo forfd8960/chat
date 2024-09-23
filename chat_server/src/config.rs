@@ -29,9 +29,9 @@ impl AppConfig {
             File::open("/etc/chat/app.yml"),
             env::var("CHAT_CONFIG"),
         ) {
-            (Ok(f), _, _) => serde_yml::from_reader(f),
-            (_, Ok(f), _) => serde_yml::from_reader(f),
-            (_, _, Ok(f)) => serde_yml::from_reader(File::open(f)?),
+            (Ok(f), _, _) => serde_yaml::from_reader(f),
+            (_, Ok(f), _) => serde_yaml::from_reader(f),
+            (_, _, Ok(f)) => serde_yaml::from_reader(File::open(f)?),
             _ => anyhow::bail!("Could not find app.yml"),
         };
 

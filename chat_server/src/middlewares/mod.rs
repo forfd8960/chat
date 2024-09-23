@@ -1,15 +1,12 @@
 use axum::{middleware::from_fn, Router};
-use request_id::set_request_id;
+use chat_core::middlewares::request_id;
+use tower::ServiceBuilder;
 use tower_http::{
     compression::CompressionLayer,
     trace::{DefaultMakeSpan, DefaultOnRequest, DefaultOnResponse, TraceLayer},
     LatencyUnit,
 };
 use tracing::Level;
-
-use tower::ServiceBuilder;
-
-mod request_id;
 
 pub fn set_layer(app: Router) -> Router {
     app.layer(
@@ -25,6 +22,6 @@ pub fn set_layer(app: Router) -> Router {
                     ),
             )
             .layer(CompressionLayer::new().gzip(true).br(true).deflate(true))
-            .layer(from_fn(set_request_id)),
+            .layer(from_fn(request_id::set_request_id)),
     )
 }

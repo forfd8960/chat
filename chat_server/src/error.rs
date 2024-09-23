@@ -13,6 +13,9 @@ pub enum AppError {
 
     #[error("jwt error: {0}")]
     JwtError(#[from] jwt_simple::Error),
+
+    #[error("user email already registered: {0}")]
+    EmailAlreadyExists(String),
 }
 
 impl IntoResponse for AppError {
@@ -21,6 +24,7 @@ impl IntoResponse for AppError {
             AppError::SqlxError(_) => StatusCode::INTERNAL_SERVER_ERROR,
             AppError::PasswordHashError(_) => StatusCode::UNPROCESSABLE_ENTITY,
             AppError::JwtError(_) => StatusCode::FORBIDDEN,
+            AppError::EmailAlreadyExists(_) => StatusCode::CONFLICT,
         };
 
         (status_code, format!("{:?}", self)).into_response()

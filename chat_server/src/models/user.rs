@@ -1,39 +1,67 @@
-use std::mem;
-
+use crate::{error::AppError, User};
 use argon2::{
     password_hash::{rand_core::OsRng, PasswordHash, PasswordHasher, PasswordVerifier, SaltString},
     Argon2,
 };
+use serde::{Deserialize, Serialize};
+use std::mem;
 
-use crate::{error::AppError, User};
+#[derive(Debug, Serialize, Deserialize)]
+pub struct CreateUser {
+    pub fullname: String,
+    pub email: String,
+    pub password: String,
+}
 
-use super::{CreateUser, SignInUser};
+#[derive(Debug, Serialize, Deserialize)]
+pub struct SignInUser {
+    pub email: String,
+    pub password: String,
+}
 
 impl User {
-    pub async fn find_by_email(pool: &sqlx::PgPool, email: &str) -> Result<Option<Self>, AppError> {
-        let r: Option<User> =
+    pub async fn find_user_by_email(
+        pool: &sqlx::PgPool,
+        email: &str,
+    ) -> Result<Option<Self>, AppError> {
+        let user =
             sqlx::query_as("SELECT id,ws_id,fullname,email,created_at FROM users WHERE email=$1")
                 .bind(email)
                 .fetch_optional(pool)
                 .await?;
 
-        Ok(r)
+        Ok(user)
+    }
+
+    pub async fn find_user_by_id(pool: &sqlx::PgPool, id: i64) -> Result<Option<Self>, AppError> {
+        let user =
+            sqlx::query_as("SELECT id,ws_id,fullname,email,created_at FROM users WHERE id=$1")
+                .bind(id)
+                .fetch_optional(pool)
+                .await?;
+
+        Ok(user)
     }
 
     // Create new user
     pub async fn create_user(pool: &sqlx::PgPool, input: &CreateUser) -> Result<Self, AppError> {
-        let pwd = hash_password(&input.password)?;
+        let user = Self::find_user_by_email(pool, &input.email).await?;
+        if user.is_some() {
+            return Err(AppError::EmailAlreadyExists(input.email.clone()));
+        }
 
-        let r: User = sqlx::query_as(
-            "INSERT INTO users (fullname,email,password) VALUES ($1,$2,$3) RETURNING id,fullname,email,created_at",
+        let pwd_hash = hash_password(&input.password)?;
+
+        let user = sqlx::query_as(
+            "INSERT INTO users (fullname,email,password_hash) VALUES ($1,$2,$3) RETURNING id,fullname,email,created_at",
         )
         .bind(&input.fullname)
         .bind(&input.email)
-        .bind(pwd)
+        .bind(pwd_hash)
         .fetch_one(pool)
         .await?;
 
-        Ok(r)
+        Ok(user)
     }
 
     pub async fn verify_user(
