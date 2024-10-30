@@ -10,6 +10,7 @@ use std::mem;
 pub struct CreateUser {
     pub fullname: String,
     pub email: String,
+    pub workspace: String,
     pub password: String,
 }
 
@@ -53,7 +54,8 @@ impl User {
         let pwd_hash = hash_password(&input.password)?;
 
         let user = sqlx::query_as(
-            "INSERT INTO users (fullname,email,password_hash) VALUES ($1,$2,$3) RETURNING id,fullname,email,created_at",
+            "INSERT INTO users (fullname,email,password_hash)
+            VALUES ($1,$2,$3) RETURNING id,ws_id,fullname,email,created_at",
         )
         .bind(&input.fullname)
         .bind(&input.email)

@@ -1,4 +1,5 @@
 pub mod user;
+pub mod workspace;
 
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
@@ -13,5 +14,13 @@ pub struct User {
     #[sqlx(default)]
     #[serde(skip)]
     pub password_hash: Option<String>,
+    pub created_at: chrono::DateTime<chrono::Utc>,
+}
+
+#[derive(Debug, Clone, FromRow, Serialize, Deserialize, PartialEq)]
+pub struct Workspace {
+    pub id: i64,
+    pub name: String,
+    pub owner_id: i64,
     pub created_at: chrono::DateTime<chrono::Utc>,
 }
