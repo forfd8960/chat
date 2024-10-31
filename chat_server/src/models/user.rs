@@ -6,6 +6,8 @@ use argon2::{
 use serde::{Deserialize, Serialize};
 use std::mem;
 
+use super::Workspace;
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CreateUser {
     pub fullname: String,
@@ -51,12 +53,15 @@ impl User {
             return Err(AppError::EmailAlreadyExists(input.email.clone()));
         }
 
+        let ws = Workspace::get_by_name(&input.workspace, pool).await?;
+
         let pwd_hash = hash_password(&input.password)?;
 
         let user = sqlx::query_as(
-            "INSERT INTO users (fullname,email,password_hash)
-            VALUES ($1,$2,$3) RETURNING id,ws_id,fullname,email,created_at",
+            "INSERT INTO users (ws_id,fullname,email,password_hash)
+            VALUES ($1,$2,$3,$4) RETURNING id,ws_id,fullname,email,created_at",
         )
+        .bind(ws.id)
         .bind(&input.fullname)
         .bind(&input.email)
         .bind(pwd_hash)

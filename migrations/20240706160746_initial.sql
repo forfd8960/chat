@@ -14,7 +14,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON users(email);
 CREATE TABLE IF NOT EXISTS workspaces (
     id bigserial PRIMARY KEY,
     name VARCHAR(32) NOT NULL UNIQUE,
-    owner_id bigint NOT NULL REFERENCES users(id),
+    owner_id bigint NOT NULL,
     created_at timestamptz DEFAULT CURRENT_TIMESTAMP
 );
 
