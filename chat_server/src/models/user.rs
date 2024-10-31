@@ -53,11 +53,14 @@ impl User {
             return Err(AppError::EmailAlreadyExists(input.email.clone()));
         }
 
-        let ws = Workspace::get_by_name(&input.workspace, pool).await?;
+        let ws = match Workspace::get_by_name(&input.workspace, pool).await? {
+            Some(ws) => ws,
+            None => Workspace::create(&input.workspace, 0, pool).await?,
+        };
 
         let pwd_hash = hash_password(&input.password)?;
 
-        let user = sqlx::query_as(
+        let user: User = sqlx::query_as(
             "INSERT INTO users (ws_id,fullname,email,password_hash)
             VALUES ($1,$2,$3,$4) RETURNING id,ws_id,fullname,email,created_at",
         )
@@ -67,6 +70,10 @@ impl User {
         .bind(pwd_hash)
         .fetch_one(pool)
         .await?;
+
+        if ws.owner_id == 0 {
+            Workspace::update_owner(ws.id as u64, user.id as _, pool).await?;
+        }
 
         Ok(user)
     }
@@ -115,4 +122,51 @@ fn verify_password(password: &str, hash: &str) -> Result<bool, AppError> {
         .verify_password(password.as_bytes(), &parsed_hash)
         .is_ok();
     Ok(is_valid)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{CreateUser, User};
+    use crate::models::Workspace;
+    use anyhow::Result;
+    use sqlx::PgPool;
+
+    #[tokio::test]
+    async fn test_user_should_create() -> Result<()> {
+        let pool =
+            PgPool::connect("postgres://db_manager:super_admin8801@localhost:5432/chat_test")
+                .await?;
+
+        sqlx::migrate!("../migrations").run(&pool).await?;
+
+        println!("start create user...");
+
+        let user = User::create_user(
+            &pool,
+            &CreateUser {
+                fullname: "Bob".to_string(),
+                email: "bob@acme.com".to_string(),
+                workspace: "new-ws".to_string(),
+                password: "test-passAbc9".to_string(),
+            },
+        )
+        .await?;
+
+        println!("created user: {:?}", user);
+        assert_eq!(user.fullname, "Bob");
+        assert_eq!(user.email, "bob@acme.com");
+
+        let ws = Workspace::get_by_id(user.ws_id as _, &pool).await?;
+        println!("created workspace: {:?}", ws);
+        assert_eq!(ws.name, "new-ws");
+        assert_eq!(ws.owner_id, user.id);
+
+        sqlx::query(r#"TRUNCATE TABLE users, workspaces, chats, messages;"#)
+            .execute(&pool)
+            .await?;
+        sqlx::query(r#"DROP TYPE IF EXISTS chat_type;"#)
+            .execute(&pool)
+            .await?;
+        Ok(())
+    }
 }

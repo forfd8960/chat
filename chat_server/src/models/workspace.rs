@@ -32,16 +32,16 @@ impl Workspace {
         Ok(ws)
     }
 
-    pub async fn get_by_name(name: &str, pool: &PgPool) -> Result<Self, AppError> {
+    pub async fn get_by_name(name: &str, pool: &PgPool) -> Result<Option<Self>, AppError> {
         let ws = sqlx::query_as(
             r#"
-            SELECT id,name,owner_id, created_at
+            SELECT id,name,owner_id,created_at
             FROM workspaces
             WHERE name = $1
             "#,
         )
         .bind(name)
-        .fetch_one(pool)
+        .fetch_optional(pool)
         .await?;
 
         Ok(ws)
@@ -67,7 +67,7 @@ impl Workspace {
     pub async fn list_all_chat_users(id: u64, pool: &PgPool) -> Result<Vec<ChatUser>, AppError> {
         let users = sqlx::query_as(
             r#"
-            SELECT u.id, u.fullname, u.email
+            SELECT users.id, users.fullname, users.email
             FROM users
             WHERE ws_id = $1
             "#,
@@ -82,39 +82,19 @@ impl Workspace {
 
 #[cfg(test)]
 mod tests {
-    use std::env;
-
+    use crate::{
+        models::{user::CreateUser, Workspace},
+        User,
+    };
     use anyhow::Result;
     use sqlx::PgPool;
-    use tokio::fs;
-
-    use crate::models::Workspace;
 
     #[tokio::test]
     async fn test_workspace_should_create() -> Result<()> {
-        let current_dir = env::current_dir().expect("Failed to get current dir");
-        println!("Current directory: {}", current_dir.display());
-
         let pool =
             PgPool::connect("postgres://db_manager:super_admin@localhost:5432/chat_test").await?;
 
-        // let create_table_sql =
-        //     fs::read_to_string("../migrations/20240706160746_initial.sql").await?;
-
-        // println!("{:?}", pool);
-        // println!("{}", create_table_sql);
-
-        sqlx::query(
-            r#"
-            CREATE TABLE IF NOT EXISTS workspaces (
-                id bigserial PRIMARY KEY,
-                name VARCHAR(32) NOT NULL UNIQUE,
-                owner_id bigint NOT NULL,
-                created_at timestamptz DEFAULT CURRENT_TIMESTAMP
-            )"#,
-        )
-        .execute(&pool)
-        .await?;
+        sqlx::migrate!("../migrations").run(&pool).await?;
 
         println!("start create workspace...");
 
@@ -126,6 +106,62 @@ mod tests {
         let ws1 = Workspace::get_by_id(ws.id as u64, &pool).await?;
         println!("get workspace: {:?}", ws1);
         assert_eq!(ws, ws1);
+
+        sqlx::query(r#"TRUNCATE TABLE workspaces;"#)
+            .execute(&pool)
+            .await?;
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_workspace_list_all_chat_users() -> Result<()> {
+        let pool =
+            PgPool::connect("postgres://db_manager:super_admin8801@localhost:5432/chat_test")
+                .await?;
+
+        sqlx::migrate!("../migrations").run(&pool).await?;
+
+        println!("start create workspace...");
+
+        let ws = Workspace::create("test-user-workspace", 0, &pool).await?;
+        println!("created workspace: {:?}", ws);
+
+        let create_user1 = &CreateUser {
+            fullname: "Bob".to_string(),
+            email: "bob@acme.com".to_string(),
+            workspace: "test-user-workspace".to_string(),
+            password: "test-passAbc8".to_string(),
+        };
+        let user1 = User::create_user(&pool, create_user1).await?;
+
+        println!("created user1: {:?}", user1);
+
+        let create_user2 = &CreateUser {
+            fullname: "Alice".to_string(),
+            email: "alice@acme.com".to_string(),
+            workspace: "test-user-workspace".to_string(),
+            password: "test-passAbc9".to_string(),
+        };
+        let user2 = User::create_user(&pool, create_user2).await?;
+        println!("created user2: {:?}", user2);
+
+        let users = Workspace::list_all_chat_users(ws.id as u64, &pool).await?;
+        println!("get users: {:?}", users);
+
+        assert_eq!(users.len(), 2);
+
+        assert_eq!(users[0].id, user1.id);
+        assert_eq!(users[1].id, user2.id);
+        assert_eq!(users[0].fullname, user1.fullname);
+        assert_eq!(users[1].fullname, user2.fullname);
+
+        sqlx::query(r#"TRUNCATE TABLE users, workspaces, chats, messages;"#)
+            .execute(&pool)
+            .await?;
+        sqlx::query(r#"DROP TYPE IF EXISTS chat_type;"#)
+            .execute(&pool)
+            .await?;
         Ok(())
     }
 }
