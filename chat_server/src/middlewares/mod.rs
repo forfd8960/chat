@@ -8,6 +8,8 @@ use tower_http::{
 };
 use tracing::Level;
 
+pub mod auth;
+
 pub fn set_layer(app: Router) -> Router {
     app.layer(
         ServiceBuilder::new()

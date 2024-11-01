@@ -6,18 +6,19 @@ mod models;
 mod utils;
 
 pub use config::AppConfig;
-use middlewares::set_layer;
+use middlewares::{auth::verify_token, set_layer};
 pub use models::User;
 
 use anyhow::{Context, Result};
 use axum::{
+    middleware::from_fn_with_state,
     routing::{get, patch, post},
     Router,
 };
 use error::AppError;
 
 use handlers::{
-    create_chat_handler, delete_chat_handler, index_handler, list_chat_handler,
+    create_chat_handler, delete_chat_handler, index_handler, list_chat_handler, list_chat_users,
     list_messages_handler, send_message_handler, signin_handler, signup_handler,
     update_chat_handler,
 };
@@ -73,12 +74,23 @@ impl fmt::Debug for AppStateInner {
     }
 }
 
+pub trait TokenVeirfy {
+    type Error: fmt::Debug;
+    fn vetify(&self, token: &str) -> Result<User, Self::Error>;
+}
+
+impl TokenVeirfy for AppState {
+    type Error = AppError;
+    fn vetify(&self, token: &str) -> Result<User, Self::Error> {
+        Ok(self.dk.verify(token)?)
+    }
+}
+
 pub async fn get_router(conf: AppConfig) -> Result<axum::Router, AppError> {
     let state = AppState::try_new(conf).await?;
 
     let api_router = Router::new()
-        .route("/signin", post(signin_handler))
-        .route("/signup", post(signup_handler))
+        .route("/users", get(list_chat_users))
         .route("/chat", post(create_chat_handler).get(list_chat_handler))
         .route(
             "/chat/:id",
@@ -86,7 +98,10 @@ pub async fn get_router(conf: AppConfig) -> Result<axum::Router, AppError> {
                 .delete(delete_chat_handler)
                 .post(send_message_handler),
         )
-        .route("/chat/:id/messages", get(list_messages_handler));
+        .route("/chat/:id/messages", get(list_messages_handler))
+        .layer(from_fn_with_state(state.clone(), verify_token::<AppState>))
+        .route("/signin", post(signin_handler))
+        .route("/signup", post(signup_handler));
 
     let app = Router::new()
         .route("/", get(index_handler))
