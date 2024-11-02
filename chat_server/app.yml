@@ -1,12 +1,13 @@
 server:
   port: 8888
-  db_url: "postgres://postgres:postgres_admin@localhost:5432/chat"
+  db_url: "postgres://zhiruchen@localhost:5432/chat"
+  base_dir: "/tmp"
 auth:
   private_key: |
     -----BEGIN PRIVATE KEY-----
-    MC4CAQAwBQYDK2VwBCIEIFvFrAAH2xzDmS1tYh6582YimuB0DgazNpik1kVEsNFv
+    MC4CAQAwBQYDK2VwBCIEIFpLYd35hdfAJNhHSELQcE6kUzut58UQ/yVR6lndBKX0
     -----END PRIVATE KEY-----
   public_key: |
     -----BEGIN PUBLIC KEY-----
-    MCowBQYDK2VwAyEAA7JbAsB32+qlwJK4mKRxUVyCivbLp9M0GI9zaP35Jes=
+    MCowBQYDK2VwAyEAT0Sx8SxDZmkz2WNTOy4LqcY2eK11DUolrEnULI9EJFQ=
     -----END PUBLIC KEY-----

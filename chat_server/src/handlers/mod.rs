@@ -1,5 +1,6 @@
 mod auth;
 mod chat;
+mod file;
 mod message;
 mod workspace;
 
@@ -16,6 +17,9 @@ pub(crate) use message::*;
 
 #[allow(unused_imports)]
 pub(crate) use workspace::*;
+
+#[allow(unused_imports)]
+pub(crate) use file::*;
 
 pub(crate) async fn index_handler() -> impl IntoResponse {
     "Hello, world!"

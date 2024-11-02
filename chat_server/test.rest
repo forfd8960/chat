@@ -1,0 +1,47 @@
+### signup user
+
+POST http://localhost:8888/api/signup
+Content-Type: application/json
+
+{
+"workspace": "acme", "fullname": "Alice", "email": "alice@acme.org", "password": "123456"
+}
+
+### signup user
+
+POST http://localhost:8888/api/signup
+Content-Type: application/json
+
+{
+"workspace": "acme", "fullname": "Alice Chen", "email": "alice@acme.org", "password": "123456"
+}
+
+### signup user
+
+POST http://localhost:8888/api/signup
+Content-Type: application/json
+
+{
+"workspace": "acme", "fullname": "Bob Hua", "email": "bob@acme.org", "password": "123456"
+}
+
+### signin user (invalid)
+
+POST http://localhost:8888/api/signin
+Content-Type: application/json
+
+{
+"email": "alice@acme.org", "password": "a123456"
+}
+
+### signin user (valid)
+
+# @name signin
+POST http://localhost:8888/api/signin
+Content-Type: application/json
+
+{
+"email": "alice@acme.org", "password": "123456"
+}
+@token = {{signin.response.body.token}}
+

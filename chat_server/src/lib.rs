@@ -20,11 +20,11 @@ use error::AppError;
 use handlers::{
     create_chat_handler, delete_chat_handler, index_handler, list_chat_handler, list_chat_users,
     list_messages_handler, send_message_handler, signin_handler, signup_handler,
-    update_chat_handler,
+    update_chat_handler, upload_handler,
 };
 
 use sqlx::PgPool;
-use std::{fmt, ops::Deref, sync::Arc};
+use std::{fmt, fs, ops::Deref, sync::Arc};
 use utils::{DecodingKey, EncodingKey};
 
 #[derive(Debug, Clone)]
@@ -50,8 +50,11 @@ impl Deref for AppState {
 
 impl AppState {
     pub async fn try_new(config: AppConfig) -> Result<Self, AppError> {
-        let dk = DecodingKey::load(&config.auth.private_key).context("load DecodingKey failed")?;
-        let ek = EncodingKey::load(&config.auth.public_key).context("load EncodingKey failed")?;
+        tokio::fs::create_dir_all(&config.server.base_dir).await?;
+
+        let ek = EncodingKey::load(&config.auth.private_key).context("load EncodingKey failed")?;
+        let dk = DecodingKey::load(&config.auth.public_key).context("load DecodingKey failed")?;
+
         let pool = PgPool::connect(&config.server.db_url)
             .await
             .context("connect DB failed")?;
@@ -92,6 +95,7 @@ pub async fn get_router(conf: AppConfig) -> Result<axum::Router, AppError> {
     let api_router = Router::new()
         .route("/users", get(list_chat_users))
         .route("/chat", post(create_chat_handler).get(list_chat_handler))
+        .route("/uploadfile", post(upload_handler))
         .route(
             "/chat/:id",
             patch(update_chat_handler)
