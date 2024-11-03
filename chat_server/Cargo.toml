@@ -24,6 +24,7 @@ sqlx = { workspace = true }
 sqlx-db-tester = { version = "0.4.2", optional = true }
 thiserror = { workspace = true }
 tokio = { workspace = true }
+tokio-util = { workspace = true }
 tower = { workspace = true }
 tower-http = { workspace = true }
 tracing = { workspace = true }

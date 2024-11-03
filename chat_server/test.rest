@@ -45,3 +45,7 @@ Content-Type: application/json
 }
 @token = {{signin.response.body.token}}
 
+
+### Download file
+GET http://localhost:8888/api/download/1/857/5d6/a1a688d0ea3d92d950c178de788f121b87.png
+Authorization: Bearer {{token}}

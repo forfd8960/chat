@@ -1,7 +1,8 @@
 use std::path::PathBuf;
 
 use axum::{
-    extract::{Multipart, State},
+    extract::{Multipart, Path, State},
+    http::HeaderMap,
     response::IntoResponse,
     Extension, Json,
 };
@@ -38,4 +39,27 @@ pub(crate) async fn upload_handler(
     }
 
     Ok(Json(files))
+}
+
+pub(crate) async fn file_handler(
+    Extension(user): Extension<User>,
+    State(state): State<AppState>,
+    Path((ws_id, path)): Path<(i64, String)>,
+) -> Result<impl IntoResponse, AppError> {
+    if user.ws_id != ws_id {
+        return Err(AppError::Unauthorized);
+    }
+
+    let base_dir = PathBuf::from(&state.config.server.base_dir).join(ws_id.to_string());
+    let file_path = base_dir.join(path);
+    if !file_path.exists() {
+        return Err(AppError::NotFound("file".to_string()));
+    }
+
+    let mime = mime_guess::from_path(&file_path).first_or_octet_stream();
+    let mut header = HeaderMap::new();
+    header.insert("Content-Type", mime.to_string().parse().unwrap());
+
+    let body = fs::read(file_path).await?;
+    Ok((header, body))
 }

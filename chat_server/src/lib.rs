@@ -18,8 +18,8 @@ use axum::{
 use error::AppError;
 
 use handlers::{
-    create_chat_handler, delete_chat_handler, index_handler, list_chat_handler, list_chat_users,
-    list_messages_handler, send_message_handler, signin_handler, signup_handler,
+    create_chat_handler, delete_chat_handler, file_handler, index_handler, list_chat_handler,
+    list_chat_users, list_messages_handler, send_message_handler, signin_handler, signup_handler,
     update_chat_handler, upload_handler,
 };
 
@@ -96,6 +96,7 @@ pub async fn get_router(conf: AppConfig) -> Result<axum::Router, AppError> {
         .route("/users", get(list_chat_users))
         .route("/chat", post(create_chat_handler).get(list_chat_handler))
         .route("/uploadfile", post(upload_handler))
+        .route("/download/:ws_id/*path", get(file_handler))
         .route(
             "/chat/:id",
             patch(update_chat_handler)

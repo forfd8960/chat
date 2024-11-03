@@ -21,6 +21,9 @@ pub enum AppError {
     #[error("upload file error: {0}")]
     UploadError(#[from] MultipartError),
 
+    #[error("{0} not found")]
+    NotFound(String),
+
     #[error("password hash error: {0}")]
     PasswordHashError(#[from] argon2::password_hash::Error),
 
@@ -29,6 +32,9 @@ pub enum AppError {
 
     #[error("user email already registered: {0}")]
     EmailAlreadyExists(String),
+
+    #[error("user unauthorized")]
+    Unauthorized,
 }
 
 impl IntoResponse for AppError {
@@ -40,6 +46,8 @@ impl IntoResponse for AppError {
             AppError::JwtError(_) => StatusCode::FORBIDDEN,
             AppError::EmailAlreadyExists(_) => StatusCode::CONFLICT,
             AppError::UploadError(_) => StatusCode::INTERNAL_SERVER_ERROR,
+            AppError::Unauthorized => StatusCode::UNAUTHORIZED,
+            AppError::NotFound(_) => StatusCode::NOT_FOUND,
         };
 
         (status_code, format!("{:?}", self)).into_response()
