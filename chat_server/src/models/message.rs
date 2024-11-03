@@ -41,7 +41,7 @@ impl AppState {
         .bind(chat_id as i64)
         .bind(send_id as i64)
         .bind(msg.content.clone())
-        .bind(msg.files.clone())
+        .bind(files)
         .fetch_one(&self.pool)
         .await?;
 
