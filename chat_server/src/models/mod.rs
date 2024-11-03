@@ -1,7 +1,9 @@
 pub mod file;
+pub mod message;
 pub mod user;
 pub mod workspace;
 
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 
@@ -24,4 +26,15 @@ pub struct Workspace {
     pub name: String,
     pub owner_id: i64,
     pub created_at: chrono::DateTime<chrono::Utc>,
+}
+
+#[derive(Debug, Clone, FromRow, Serialize, Deserialize, PartialEq)]
+pub struct Message {
+    pub id: i64,
+    pub chat_id: i64,
+    pub sender_id: i64,
+    pub content: String,
+    pub files: Vec<String>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
 }

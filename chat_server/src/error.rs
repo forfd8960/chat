@@ -35,6 +35,9 @@ pub enum AppError {
 
     #[error("user unauthorized")]
     Unauthorized,
+
+    #[error("{0}")]
+    MessageError(String),
 }
 
 impl IntoResponse for AppError {
@@ -48,6 +51,7 @@ impl IntoResponse for AppError {
             AppError::UploadError(_) => StatusCode::INTERNAL_SERVER_ERROR,
             AppError::Unauthorized => StatusCode::UNAUTHORIZED,
             AppError::NotFound(_) => StatusCode::NOT_FOUND,
+            AppError::MessageError(_) => StatusCode::BAD_REQUEST,
         };
 
         (status_code, format!("{:?}", self)).into_response()

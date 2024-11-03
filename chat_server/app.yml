@@ -1,7 +1,7 @@
 server:
   port: 8888
   db_url: "postgres://zhiruchen@localhost:5432/chat"
-  base_dir: "/tmp"
+  base_dir: "/tmp/chat_server"
 auth:
   private_key: |
     -----BEGIN PRIVATE KEY-----

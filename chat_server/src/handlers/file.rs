@@ -34,7 +34,7 @@ pub(crate) async fn upload_handler(
                 fs::create_dir_all(path.parent().expect("xxx")).await?;
                 fs::write(path, data).await?;
             }
-            files.push(chat_file.url());
+            files.push(chat_file.url(ws_id.to_string()));
         }
     }
 
