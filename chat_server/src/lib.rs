@@ -12,15 +12,15 @@ pub use models::User;
 use anyhow::{Context, Result};
 use axum::{
     middleware::from_fn_with_state,
-    routing::{get, patch, post},
+    routing::{get, post, put},
     Router,
 };
 use error::AppError;
 
 use handlers::{
-    create_chat_handler, delete_chat_handler, file_handler, index_handler, list_chat_handler,
-    list_chat_users, list_messages_handler, send_message_handler, signin_handler, signup_handler,
-    update_chat_handler, upload_handler,
+    create_chat_handler, delete_chat_handler, file_handler, get_chat_handler, index_handler,
+    list_chat_handler, list_chat_users, list_messages_handler, send_message_handler,
+    signin_handler, signup_handler, update_chat_handler, upload_handler,
 };
 
 use sqlx::PgPool;
@@ -99,7 +99,8 @@ pub async fn get_router(conf: AppConfig) -> Result<axum::Router, AppError> {
         .route("/download/:ws_id/*path", get(file_handler))
         .route(
             "/chat/:id",
-            patch(update_chat_handler)
+            get(get_chat_handler)
+                .put(update_chat_handler)
                 .delete(delete_chat_handler)
                 .post(send_message_handler),
         )
