@@ -24,7 +24,7 @@ use handlers::{
 };
 
 use sqlx::PgPool;
-use std::{fmt, fs, ops::Deref, sync::Arc};
+use std::{fmt, ops::Deref, sync::Arc};
 use utils::{DecodingKey, EncodingKey};
 
 #[derive(Debug, Clone)]
