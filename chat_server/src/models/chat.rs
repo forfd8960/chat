@@ -9,6 +9,13 @@ pub struct CreateChat {
     pub members: Vec<i64>,
 }
 
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct UpdateChat {
+    pub name: Option<String>,
+    pub chat_type: Option<ChatType>,
+    pub members: Vec<i64>,
+}
+
 impl AppState {
     pub async fn create_chat(&self, ws_id: u64, input: CreateChat) -> Result<Chat, AppError> {
         let len = input.members.len();
@@ -35,6 +42,37 @@ impl AppState {
         .await?;
 
         Ok(chat)
+    }
+
+    pub async fn update_chat_by_id(
+        &self,
+        chat_id: u64,
+        origin_chat: Chat,
+        input: UpdateChat,
+    ) -> Result<Chat, AppError> {
+        let chat_type = if input.chat_type.is_some() {
+            input.chat_type.unwrap()
+        } else {
+            origin_chat.r#type
+        };
+
+        let chat =
+            sqlx::query_as("UPDATE chats SET name=$1, type=$2, members=$3 WHERE id=$4 RETURNING *")
+                .bind(input.name)
+                .bind(chat_type)
+                .bind(input.members)
+                .bind(chat_id as i64)
+                .fetch_one(&self.pool)
+                .await?;
+        Ok(chat)
+    }
+
+    pub async fn delete_chat_by_id(&self, chat_id: u64) -> Result<(), AppError> {
+        sqlx::query("DELETE FROM chats WHERE id=$1")
+            .bind(chat_id as i64)
+            .execute(&self.pool)
+            .await?;
+        Ok(())
     }
 
     pub async fn list_chats(&self, user_id: u64, ws_id: u64) -> Result<Vec<Chat>, AppError> {
@@ -74,6 +112,16 @@ impl AppState {
         .await?;
 
         Ok(is_member.is_some())
+    }
+
+    pub async fn validate_members(&self, members: Vec<i64>) -> Result<(), AppError> {
+        let len = members.len();
+        let users = self.find_users_by_ids(members).await?;
+        if users.len() != len {
+            return Err(AppError::ChatError("Invalid members".to_string()));
+        }
+
+        Ok(())
     }
 }
 

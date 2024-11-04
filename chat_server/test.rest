@@ -54,3 +54,26 @@ Authorization: Bearer {{token}}
 ### get workspace
 GET http://localhost:8888/api/workspaces/1
 Authorization: Bearer {{token}}
+
+
+### create chat
+POST http://localhost:8888/api/chats
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+"name": "TestChan", "public": false, "members": [1, 2]
+}
+
+### get chat
+GET http://localhost:8888/api/chats/2
+Authorization: Bearer {{token}}
+
+### update chat
+PUT http://localhost:8888/api/chats/1
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+"name": "Welcome-2", "chat_type": "PrivateChannel", "members": [1, 2]
+}

@@ -99,7 +99,7 @@ pub async fn get_router(conf: AppConfig) -> Result<axum::Router, AppError> {
         .route("/uploadfile", post(upload_handler))
         .route("/download/:ws_id/*path", get(file_handler))
         .route(
-            "/chat/:id",
+            "/chats/:id",
             get(get_chat_handler)
                 .put(update_chat_handler)
                 .delete(delete_chat_handler)

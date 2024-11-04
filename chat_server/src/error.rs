@@ -24,6 +24,9 @@ pub enum AppError {
     #[error("{0} not found")]
     NotFound(String),
 
+    #[error("{0}")]
+    ChatError(String),
+
     #[error("password hash error: {0}")]
     PasswordHashError(#[from] argon2::password_hash::Error),
 
@@ -52,6 +55,7 @@ impl IntoResponse for AppError {
             AppError::Unauthorized => StatusCode::UNAUTHORIZED,
             AppError::NotFound(_) => StatusCode::NOT_FOUND,
             AppError::MessageError(_) => StatusCode::BAD_REQUEST,
+            AppError::ChatError(_) => StatusCode::BAD_REQUEST,
         };
 
         (status_code, format!("{:?}", self)).into_response()

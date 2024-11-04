@@ -41,6 +41,17 @@ impl AppState {
         Ok(user)
     }
 
+    pub async fn find_users_by_ids(&self, ids: Vec<i64>) -> Result<Vec<User>, AppError> {
+        let users = sqlx::query_as(
+            "SELECT id,ws_id,fullname,email,created_at FROM users WHERE id = ANY($1)",
+        )
+        .bind(ids)
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(users)
+    }
+
     // Create new user
     pub async fn create_user(&self, input: &CreateUser) -> Result<User, AppError> {
         let user = self.find_user_by_email(&input.email).await?;
