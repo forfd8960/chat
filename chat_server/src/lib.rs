@@ -18,9 +18,10 @@ use axum::{
 use error::AppError;
 
 use handlers::{
-    create_chat_handler, delete_chat_handler, file_handler, get_chat_handler, index_handler,
-    list_chat_handler, list_chat_users, list_messages_handler, send_message_handler,
-    signin_handler, signup_handler, update_chat_handler, upload_handler,
+    create_chat_handler, delete_chat_handler, file_handler, get_chat_handler,
+    get_workspace_handler, index_handler, list_chat_handler, list_chat_users,
+    list_messages_handler, send_message_handler, signin_handler, signup_handler,
+    update_chat_handler, upload_handler,
 };
 
 use sqlx::PgPool;
@@ -94,7 +95,7 @@ pub async fn get_router(conf: AppConfig) -> Result<axum::Router, AppError> {
 
     let api_router = Router::new()
         .route("/users", get(list_chat_users))
-        .route("/chat", post(create_chat_handler).get(list_chat_handler))
+        .route("/chats", post(create_chat_handler).get(list_chat_handler))
         .route("/uploadfile", post(upload_handler))
         .route("/download/:ws_id/*path", get(file_handler))
         .route(
@@ -105,6 +106,7 @@ pub async fn get_router(conf: AppConfig) -> Result<axum::Router, AppError> {
                 .post(send_message_handler),
         )
         .route("/chat/:id/messages", get(list_messages_handler))
+        .route("/workspaces/:ws_id", get(get_workspace_handler))
         .layer(from_fn_with_state(state.clone(), verify_token::<AppState>))
         .route("/signin", post(signin_handler))
         .route("/signup", post(signup_handler));

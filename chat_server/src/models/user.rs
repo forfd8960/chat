@@ -1,12 +1,10 @@
-use crate::{error::AppError, User};
+use crate::{error::AppError, AppState, User};
 use argon2::{
     password_hash::{rand_core::OsRng, PasswordHash, PasswordHasher, PasswordVerifier, SaltString},
     Argon2,
 };
 use serde::{Deserialize, Serialize};
 use std::mem;
-
-use super::Workspace;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CreateUser {
@@ -22,40 +20,37 @@ pub struct SignInUser {
     pub password: String,
 }
 
-impl User {
-    pub async fn find_user_by_email(
-        pool: &sqlx::PgPool,
-        email: &str,
-    ) -> Result<Option<Self>, AppError> {
+impl AppState {
+    pub async fn find_user_by_email(&self, email: &str) -> Result<Option<User>, AppError> {
         let user =
             sqlx::query_as("SELECT id,ws_id,fullname,email,created_at FROM users WHERE email=$1")
                 .bind(email)
-                .fetch_optional(pool)
+                .fetch_optional(&self.pool)
                 .await?;
 
         Ok(user)
     }
 
-    pub async fn find_user_by_id(pool: &sqlx::PgPool, id: i64) -> Result<Option<Self>, AppError> {
+    pub async fn find_user_by_id(&self, id: i64) -> Result<Option<User>, AppError> {
         let user =
             sqlx::query_as("SELECT id,ws_id,fullname,email,created_at FROM users WHERE id=$1")
                 .bind(id)
-                .fetch_optional(pool)
+                .fetch_optional(&self.pool)
                 .await?;
 
         Ok(user)
     }
 
     // Create new user
-    pub async fn create_user(pool: &sqlx::PgPool, input: &CreateUser) -> Result<Self, AppError> {
-        let user = Self::find_user_by_email(pool, &input.email).await?;
+    pub async fn create_user(&self, input: &CreateUser) -> Result<User, AppError> {
+        let user = self.find_user_by_email(&input.email).await?;
         if user.is_some() {
             return Err(AppError::EmailAlreadyExists(input.email.clone()));
         }
 
-        let ws = match Workspace::get_by_name(&input.workspace, pool).await? {
+        let ws = match self.get_workspace_by_name(&input.workspace).await? {
             Some(ws) => ws,
-            None => Workspace::create(&input.workspace, 0, pool).await?,
+            None => self.create_workspace(&input.workspace, 0).await?,
         };
 
         let pwd_hash = hash_password(&input.password)?;
@@ -68,25 +63,23 @@ impl User {
         .bind(&input.fullname)
         .bind(&input.email)
         .bind(pwd_hash)
-        .fetch_one(pool)
+        .fetch_one(&self.pool)
         .await?;
 
         if ws.owner_id == 0 {
-            Workspace::update_owner(ws.id as u64, user.id as _, pool).await?;
+            self.update_wokrspce_owner(ws.id as u64, user.id as _)
+                .await?;
         }
 
         Ok(user)
     }
 
-    pub async fn verify_user(
-        pool: &sqlx::PgPool,
-        input: &SignInUser,
-    ) -> Result<Option<Self>, AppError> {
+    pub async fn verify_user(&self, input: &SignInUser) -> Result<Option<User>, AppError> {
         let user: Option<User> = sqlx::query_as(
             "SELECT id,ws_id,fullname,email,password_hash,created_at FROM users WHERE email=$1",
         )
         .bind(&input.email)
-        .fetch_optional(pool)
+        .fetch_optional(&self.pool)
         .await?;
 
         if let Some(mut u) = user {
@@ -126,45 +119,55 @@ fn verify_password(password: &str, hash: &str) -> Result<bool, AppError> {
 
 #[cfg(test)]
 mod tests {
-    use super::{CreateUser, User};
-    use crate::models::Workspace;
+    use super::CreateUser;
+    use crate::{
+        config::{AuthConfig, ServerConfig},
+        AppConfig, AppState,
+    };
     use anyhow::Result;
-    use sqlx::PgPool;
+    use tokio::fs;
 
     #[tokio::test]
     async fn test_user_should_create() -> Result<()> {
-        let pool =
-            PgPool::connect("postgres://db_manager:super_admin8801@localhost:5432/chat_test")
-                .await?;
+        let p_key = fs::read_to_string("./fixture/private.pem").await?;
+        let d_key = fs::read_to_string("./fixture/public.pem").await?;
 
-        sqlx::migrate!("../migrations").run(&pool).await?;
+        let config = AppConfig {
+            server: ServerConfig {
+                port: 8088,
+                db_url: "postgres://db_manager:super_admin8801@localhost:5432/chat_test"
+                    .to_string(),
+                base_dir: "/tmp/chat".to_string(),
+            },
+            auth: AuthConfig {
+                private_key: p_key,
+                public_key: d_key,
+            },
+        };
+
+        let app_state = AppState::try_new(config).await?;
+        let pool = app_state.pool.clone();
 
         println!("start create user...");
-
-        let user = User::create_user(
-            &pool,
-            &CreateUser {
+        let user = app_state
+            .create_user(&CreateUser {
                 fullname: "Bob".to_string(),
                 email: "bob@acme.com".to_string(),
                 workspace: "new-ws".to_string(),
                 password: "test-passAbc9".to_string(),
-            },
-        )
-        .await?;
+            })
+            .await?;
 
         println!("created user: {:?}", user);
         assert_eq!(user.fullname, "Bob");
         assert_eq!(user.email, "bob@acme.com");
 
-        let ws = Workspace::get_by_id(user.ws_id as _, &pool).await?;
+        let ws = app_state.get_workspace_by_id(user.ws_id as _).await?;
         println!("created workspace: {:?}", ws);
         assert_eq!(ws.name, "new-ws");
         assert_eq!(ws.owner_id, user.id);
 
         sqlx::query(r#"TRUNCATE TABLE users, workspaces, chats, messages;"#)
-            .execute(&pool)
-            .await?;
-        sqlx::query(r#"DROP TYPE IF EXISTS chat_type;"#)
             .execute(&pool)
             .await?;
         Ok(())

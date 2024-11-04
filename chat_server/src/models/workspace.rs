@@ -1,23 +1,22 @@
 use super::Workspace;
-use crate::error::AppError;
+use crate::{error::AppError, AppState};
 use chat_core::ChatUser;
-use sqlx::PgPool;
 
-impl Workspace {
-    pub async fn create(name: &str, owner_id: i64, pool: &PgPool) -> Result<Self, AppError> {
+impl AppState {
+    pub async fn create_workspace(&self, name: &str, owner_id: i64) -> Result<Workspace, AppError> {
         let ws = sqlx::query_as(
             "INSERT INTO workspaces (name, owner_id)
             VALUES ($1,$2) RETURNING id,name,owner_id, created_at",
         )
         .bind(name)
         .bind(owner_id)
-        .fetch_one(pool)
+        .fetch_one(&self.pool)
         .await?;
 
         Ok(ws)
     }
 
-    pub async fn get_by_id(id: u64, pool: &PgPool) -> Result<Self, AppError> {
+    pub async fn get_workspace_by_id(&self, id: u64) -> Result<Workspace, AppError> {
         let ws = sqlx::query_as(
             r#"
             SELECT id,name,owner_id,created_at
@@ -26,13 +25,13 @@ impl Workspace {
             "#,
         )
         .bind(id as i64)
-        .fetch_one(pool)
+        .fetch_one(&self.pool)
         .await?;
 
         Ok(ws)
     }
 
-    pub async fn get_by_name(name: &str, pool: &PgPool) -> Result<Option<Self>, AppError> {
+    pub async fn get_workspace_by_name(&self, name: &str) -> Result<Option<Workspace>, AppError> {
         let ws = sqlx::query_as(
             r#"
             SELECT id,name,owner_id,created_at
@@ -41,13 +40,17 @@ impl Workspace {
             "#,
         )
         .bind(name)
-        .fetch_optional(pool)
+        .fetch_optional(&self.pool)
         .await?;
 
         Ok(ws)
     }
 
-    pub async fn update_owner(id: u64, owner_id: u64, pool: &PgPool) -> Result<Self, AppError> {
+    pub async fn update_wokrspce_owner(
+        &self,
+        id: u64,
+        owner_id: u64,
+    ) -> Result<Workspace, AppError> {
         let ws = sqlx::query_as(
             r#"
             UPDATE workspaces
@@ -58,13 +61,13 @@ impl Workspace {
         )
         .bind(owner_id as i64)
         .bind(id as i64)
-        .fetch_one(pool)
+        .fetch_one(&self.pool)
         .await?;
 
         Ok(ws)
     }
 
-    pub async fn list_all_chat_users(id: u64, pool: &PgPool) -> Result<Vec<ChatUser>, AppError> {
+    pub async fn list_all_chat_users(&self, id: u64) -> Result<Vec<ChatUser>, AppError> {
         let users = sqlx::query_as(
             r#"
             SELECT users.id, users.fullname, users.email
@@ -73,7 +76,7 @@ impl Workspace {
             "#,
         )
         .bind(id as i64)
-        .fetch_all(pool)
+        .fetch_all(&self.pool)
         .await?;
 
         Ok(users)
@@ -83,31 +86,46 @@ impl Workspace {
 #[cfg(test)]
 mod tests {
     use crate::{
-        models::{user::CreateUser, Workspace},
-        User,
+        config::{AuthConfig, ServerConfig},
+        models::user::CreateUser,
+        AppConfig, AppState,
     };
     use anyhow::Result;
-    use sqlx::PgPool;
+    use tokio::fs;
 
     #[tokio::test]
     async fn test_workspace_should_create() -> Result<()> {
-        let pool =
-            PgPool::connect("postgres://db_manager:super_admin@localhost:5432/chat_test").await?;
+        let p_key = fs::read_to_string("./fixture/private.pem").await?;
+        let d_key = fs::read_to_string("./fixture/public.pem").await?;
 
-        sqlx::migrate!("../migrations").run(&pool).await?;
+        let config = AppConfig {
+            server: ServerConfig {
+                port: 8088,
+                db_url: "postgres://db_manager:super_admin8801@localhost:5432/chat_test"
+                    .to_string(),
+                base_dir: "/tmp/chat".to_string(),
+            },
+            auth: AuthConfig {
+                private_key: p_key,
+                public_key: d_key,
+            },
+        };
+
+        let app_state = AppState::try_new(config).await?;
+        let pool = app_state.pool.clone();
 
         println!("start create workspace...");
 
-        let ws = Workspace::create("test-ws2", 2, &pool).await?;
+        let ws = app_state.create_workspace("test-ws2", 2).await?;
         println!("created workspace: {:?}", ws);
         assert_eq!(ws.name, "test-ws2");
         assert_eq!(ws.owner_id, 2);
 
-        let ws1 = Workspace::get_by_id(ws.id as u64, &pool).await?;
+        let ws1 = app_state.get_workspace_by_id(ws.id as u64).await?;
         println!("get workspace: {:?}", ws1);
         assert_eq!(ws, ws1);
 
-        sqlx::query(r#"TRUNCATE TABLE workspaces;"#)
+        sqlx::query(r#"TRUNCATE TABLE users, workspaces, chats, messages;"#)
             .execute(&pool)
             .await?;
 
@@ -116,15 +134,28 @@ mod tests {
 
     #[tokio::test]
     async fn test_workspace_list_all_chat_users() -> Result<()> {
-        let pool =
-            PgPool::connect("postgres://db_manager:super_admin8801@localhost:5432/chat_test")
-                .await?;
+        let p_key = fs::read_to_string("./fixture/private.pem").await?;
+        let d_key = fs::read_to_string("./fixture/public.pem").await?;
 
-        sqlx::migrate!("../migrations").run(&pool).await?;
+        let config = AppConfig {
+            server: ServerConfig {
+                port: 8088,
+                db_url: "postgres://db_manager:super_admin8801@localhost:5432/chat_test"
+                    .to_string(),
+                base_dir: "/tmp/chat".to_string(),
+            },
+            auth: AuthConfig {
+                private_key: p_key,
+                public_key: d_key,
+            },
+        };
+
+        let app_state = AppState::try_new(config).await?;
+        let pool = app_state.pool.clone();
 
         println!("start create workspace...");
 
-        let ws = Workspace::create("test-user-workspace", 0, &pool).await?;
+        let ws = app_state.create_workspace("test-user-workspace", 0).await?;
         println!("created workspace: {:?}", ws);
 
         let create_user1 = &CreateUser {
@@ -133,7 +164,7 @@ mod tests {
             workspace: "test-user-workspace".to_string(),
             password: "test-passAbc8".to_string(),
         };
-        let user1 = User::create_user(&pool, create_user1).await?;
+        let user1 = app_state.create_user(create_user1).await?;
 
         println!("created user1: {:?}", user1);
 
@@ -143,10 +174,10 @@ mod tests {
             workspace: "test-user-workspace".to_string(),
             password: "test-passAbc9".to_string(),
         };
-        let user2 = User::create_user(&pool, create_user2).await?;
+        let user2 = app_state.create_user(create_user2).await?;
         println!("created user2: {:?}", user2);
 
-        let users = Workspace::list_all_chat_users(ws.id as u64, &pool).await?;
+        let users = app_state.list_all_chat_users(ws.id as u64).await?;
         println!("get users: {:?}", users);
 
         assert_eq!(users.len(), 2);
@@ -157,9 +188,6 @@ mod tests {
         assert_eq!(users[1].fullname, user2.fullname);
 
         sqlx::query(r#"TRUNCATE TABLE users, workspaces, chats, messages;"#)
-            .execute(&pool)
-            .await?;
-        sqlx::query(r#"DROP TYPE IF EXISTS chat_type;"#)
             .execute(&pool)
             .await?;
         Ok(())

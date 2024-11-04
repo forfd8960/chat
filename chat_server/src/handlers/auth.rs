@@ -16,7 +16,7 @@ pub(crate) async fn signin_handler(
     State(state): State<AppState>,
     Json(input): Json<SignInUser>,
 ) -> Result<impl IntoResponse, AppError> {
-    let user = User::verify_user(&state.pool, &input).await?;
+    let user = state.verify_user(&input).await?;
     match user {
         Some(u) => {
             let token = state.ek.sign(u)?;
@@ -36,7 +36,7 @@ pub(crate) async fn signup_handler(
     State(state): State<AppState>,
     Json(input): Json<CreateUser>,
 ) -> Result<impl IntoResponse, AppError> {
-    let user = User::create_user(&state.pool, &input).await?;
+    let user = state.create_user(&input).await?;
     let token = state.ek.sign(user)?;
     let resp = Json(AuthResponse { token });
     Ok((StatusCode::CREATED, resp))
